@@ -17,5 +17,7 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
-      - name: Run validator
-        run: ci/check.py -v
+      - name: Run butane validator
+        run: ci/butane_check.py -v
+      - name: Run bash validator
+        run: ci/bash_check.py -v
