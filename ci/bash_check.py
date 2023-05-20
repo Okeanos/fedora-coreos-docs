@@ -3,10 +3,9 @@
 # Find all shell scripts in the doc tree, use shellcheck
 # to verify them, and fail on any errors.
 #
-# A shell script is fenced with one of the following options:
+# A shell script is fenced with:
 #
 # [source,bash]
-# [source,sh]
 
 import argparse
 import os
@@ -21,7 +20,7 @@ WARN = '\x1b[1;33m'
 RESET = '\x1b[0m'
 
 container = os.getenv('SHELLCHECK_CONTAINER', 'koalaman/shellcheck:stable')
-matcher = re.compile(r'^\[source,\s*(bash|sh)\]\n----\n(.+?\n)----$',
+matcher = re.compile(r'^\[source,\s*bash\]\n----\n(.+?\n)----$',
                      re.MULTILINE | re.DOTALL)
 
 parser = argparse.ArgumentParser(description='Run validations on docs.')
@@ -45,12 +44,12 @@ for dirpath, dirnames, filenames in os.walk('.', onerror=handle_error):
             filedata = fh.read()
         # Iterate over YAML source blocks
         for match in matcher.finditer(filedata):
-            script = match.group(2)
+            script = match.group(1)
             scriptline = filedata.count('\n', 0, match.start(1)) + 1
             if args.verbose:
                 print(f'Checking shell script at {filepath}:{scriptline}')
             with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as tmpscript:
-                tmpscript.write(script)
+                tmpscript.write('#!/usr/bin/env bash\n\n' + script)
                 tmpscript.flush()
                 tmpscript.close()
                 result = subprocess.run(
