@@ -9,6 +9,69 @@ This list is in reverse chronological order to keep recent changes at the top.
 
 // To add a new change here, see the template at the end of the file.
 
+== cgroups v1 support disabled
+
+In systemd v256, cgroups v1 support was disabled.
+If you’ve opted out of the cgroups v2 migration in the past, your system will fail to boot after upgrading.
+You must update your kernel arguments before the update.
+
+.Update an existing system from cgroupsv1 to cgroupsv2 and immediately reboot
+
+[source,bash]
+----
+$ sudo rpm-ostree kargs --delete=systemd.unified_cgroup_hierarchy --reboot
+----
+
+=== Planning
+
+This change has been rolled out as part of the rebase to Fedora 41.
+
+|===
+|Update Stream |Targeted release date
+
+|`next` | 41.20240916.1.0 (Sep 16, 2024)
+|`testing`| 41.20241027.2.0 (Oct 28, 2024)
+|`stable`| 41.20241027.3.0 (Nov 08, 2024)
+|===
+
+=== Notes
+
+See: https://github.com/coreos/fedora-coreos-tracker/issues/1715#issuecomment-2331986149[fedora-coreos-tracker/issues#1715].
+
+Detailed description of the change, the impacts, how to test, what manual actions are needed, etc.
+
+== Podman v5.0
+
+The Podman container runtime will be upgraded from v4 to v5. This is a https://blog.podman.io/2024/03/podman-5-0-has-been-released/[major release] that removes support for CNI networking in favor of Netavark.
+
+See also the https://fedoraproject.org/wiki/Changes/Podman5[Fedora Change] and the https://github.com/coreos/fedora-coreos-tracker/issues/1629[tracking issue].
+
+=== Planning
+
+This change will be rolled out together with the rebase to Fedora 40.
+
+|===
+|Update Stream |Targeted release date
+
+|`next` | 40.20240322.1.0 (Mar 24, 2024)
+|`testing`| 40.20240416.2.0 (Apr 22, 2024)
+|`stable`| 40.20240416.3.1 (May 07, 2024)
+|===
+
+=== Notes
+
+The full release notes for Podman v5 are available https://github.com/containers/podman/releases/tag/v5.0.0[on GitHub] and the breaking changes are explained in https://blog.podman.io/2024/03/podman-5-0-breaking-changes-in-detail/[Podman 5.0 breaking changes in detail]. Here is a summary of how this will impact Fedora CoreOS nodes:
+
+- CNI networking support has been removed and Netavark is now the only supported option.
+
+- Pasta is now the default rootless networking backend.
+
+- In the (unlikely) case that you were using podman machine inside of Fedora CoreOS, you will have to delete and re-create your podman machine. See https://blog.podman.io/2024/03/migration-of-podman-4-to-podman-5-machines/[Migration of Podman 4 to Podman 5 machines] for more details.
+
+- Support for cgroups v1 is deprecated and will removed in a future version.
+
+- Rollbacks to a previous version with Podman v4.x will likely require manual action.
+
 == System console changing to platform-specific defaults
 
 The system console setup will be changed to get a better user experience by default.
@@ -59,7 +122,7 @@ See the xref:emergency-shell.adoc[Emergency console access] documentation page f
 
 == Podman v4.0
 
-The Podman container runtime will be upgraded from v3 to v4. This is a https://podman.io/releases/2022/02/22/podman-release-v4.0.0.html[major release] that introduces backward incompatible changes to configuration files and APIs.
+The Podman container runtime will be upgraded from v3 to v4. This is a https://podman.io/release/2022/02/22/podman-release-v4.0.0[major release] that introduces backward incompatible changes to configuration files and APIs.
 
 See also the https://fedoraproject.org/wiki/Changes/Podman4.0[Fedora Change] and the https://github.com/coreos/fedora-coreos-tracker/issues/1106[tracking issue].
 
@@ -138,10 +201,10 @@ $ sudo touch /etc/coreos/iptables-legacy.stamp
 
 For new nodes that get deployed between now and when the migration happens, you can create the `/etc/coreos/iptables-legacy.stamp` file using Ignition to ensure they don't get migrated. After the migration, you can bring up new nodes on the legacy backend by manually setting the symbolic links via Ignition. Below is a Butane config that does both of these:
 
-[source, yaml]
+[source,yaml,subs="attributes"]
 ----
 variant: fcos
-version: 1.4.0
+version: {butane-latest-stable-spec}
 storage:
   files:
     - path: /etc/coreos/iptables-legacy.stamp

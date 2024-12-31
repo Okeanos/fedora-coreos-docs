@@ -27,6 +27,7 @@
 ** xref:storage.adoc[Configuring Storage]
 ** xref:managing-files.adoc[Managing Files]
 ** xref:sysconfig-network-configuration.adoc[Network Configuration]
+** xref:sysconfig-enabling-wifi.adoc[Enabling Wi-Fi]
 ** xref:sysctl.adoc[Kernel Tuning]
 ** xref:running-containers.adoc[Running Containers]
 ** xref:authentication.adoc[Configuring Users and Groups]
@@ -34,6 +35,7 @@
 ** xref:proxy.adoc[Proxied Internet Access]
 ** xref:sysconfig-setting-keymap.adoc[Setting Keyboard Layout]
 ** xref:os-extensions.adoc[Adding OS extensions]
+** xref:docker-ce.adoc[Installing Docker CE]
 ** xref:customize-nic.adoc[How to Customize a NIC Name]
 ** xref:sysconfig-configure-swaponzram.adoc[Configuring SwapOnZRAM]
 ** xref:sysconfig-configure-wireguard.adoc[Configuring WireGuard]
@@ -43,6 +45,7 @@
 ** xref:time-zone.adoc[Configuring Time Zone]
 ** xref:grub-password.adoc[Setting a GRUB password]
 ** xref:audit.adoc[Managing the audit daemon]
+** xref:composefs.adoc[ComposeFS]
 * OS updates
 ** xref:update-streams.adoc[Update Streams]
 ** xref:auto-updates.adoc[Auto-Updates]

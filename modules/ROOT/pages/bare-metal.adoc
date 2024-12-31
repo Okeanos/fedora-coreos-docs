@@ -36,7 +36,7 @@ sudo coreos-installer install /dev/sda \
     --ignition-url https://example.com/example.ign
 ----
 
-Once the installation is complete, you can simply `sudo reboot`. After rebooting, the first boot process begins. It is at this time that Ignition ingests the configuration file and provisions the system as specified.
+Once the installation is complete, you can reboot the system using `sudo reboot`. After rebooting, the first boot process begins. It is at this time that Ignition ingests the configuration file and provisions the system as specified.
 
 For more advanced ISO installs, including automation, see below. For more about the live ISO image, see the xref:live-reference.adoc[live image reference].
 
@@ -173,6 +173,76 @@ Commonly bare metal systems will have a diversity of hardware - some systems may
 A useful approach is to script generating a per-machine `.iso`. If you have a hardware database (whether a text file in git or relational database) then it will work to generate a per-machine `target-dell.ign` and `target-hp.ign` for example, and specify that to `--dest-ignition` alongside the appropriate `--dest-device` to generate `fedora-coreos-install-dell.iso` and `fedora-coreos-install-hp.iso`.
 
 Alternatively, instead of generating per-machine ISOs, you can have a `--pre-install` script run a privileged container which inspects the target system and writes an appropriate https://coreos.github.io/coreos-installer/customizing-install/#config-file-format[installer config] to `/etc/coreos/installer.d`.
+
+=== Installing on iSCSI
+
+To install CoreOS on an iSCSI boot device, follow the same
+steps as described above to get the live environnement, and add the iSCSI-related kernel arguments.
+
+
+- Mount the iSCSI target from the live environment:
+[source, bash]
+----
+sudo iscsiadm -m discovery -t st -p 10.0.0.1
+sudo iscsiadm -m node -T iqn.2023-10.coreos.target.vm:coreos -l
+----
+
+- Append the necessary kargs when running `coreos-installer`:
+
+.Installing to an iSCSI target with iBFT
+
+On a completely diskless machine, the iscsi target and initiator values can be passed through iBFT.
+These could be supplied with an iPXE boot script for example:
+
+[source, bash]
+---
+#!ipxe
+set initiator-iqn iqn.2023-11.coreos.diskless:testsetup
+sanboot iscsi:10.0.0.1::::iqn.2023-10.coreos.target.vm:coreos
+---
+
+[source, bash]
+---
+sudo coreos-installer install \
+    /dev/disk/by-path/ip-10.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
+    --append-karg rd.iscsi.firmware=1 --append-karg ip=ibft \
+    --console ttyS0 \
+    --ignition-url https://example.com/example.ign
+---
+
+
+.Installing to an iSCSI target with manual configuration
+[source, bash]
+---
+sudo coreos-installer install \
+    /dev/disk/by-path/ip-10.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
+    --append-karg rd.iscsi.initiator=iqn.2024-02.com.yourorg.name:lun0 \
+    --append-karg netroot=iscsi:iqn.2023-10.coreos.target.vm:coreos` \
+    --console ttyS0 \
+    --ignition-url https://example.com/example.ign
+---
+
+
+All this can also be set using `coreos-installer iso customize` or `coreos-installer pxe customize`. (See "Customizing installation" section above).
+
+For example using iBFT:
+
+[source,bash,subs="attributes"]
+----
+# Create customized.iso which:
+# - Automatically mounts iSCSI target using mount-iscsi.sh
+# - Provisions the installed system with config.ign
+# - Configures the installed system to use iBFT
+coreos-installer iso customize \
+    --pre-install mount-iscsi.sh \
+    --dest-device /dev/disk/by-path/ip-10.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
+    --dest-ignition config.ign \
+    --dest-karg-append rd.iscsi.firmware=1 \
+    --dest-karg-append ip=ibft \
+    -o custom.iso fedora-coreos-{stable-version}-live.x86_64.iso
+----
+
+The  `--pre-install` flag is used to run a script with `iscsiadm` commands, `--dest-device` targets the mounted disk and then `--dest-karg-append` add the necessary kargs.
 
 == Reinstalling Fedora CoreOS
 

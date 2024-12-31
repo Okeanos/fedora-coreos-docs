@@ -9,7 +9,7 @@ In this tutorial, we will run a script on the first boot via a systemd service. 
 
 == Writing the script
 
-Let's write a simple script that uses https://icanhazip.com/[icanhazip.com] to create an issue file to display as a prelogin message on the console and store it in `public-ipv4.sh`.
+Let's write a small script that uses https://icanhazip.com/[icanhazip.com] to create an issue file to display as a prelogin message on the console and store it in `public-ipv4.sh`.
 
 [source,bash]
 ----
@@ -52,10 +52,10 @@ EOF
 
 We can now create a Butane config that will include the script and systemd unit file contents by picking up the local `public-ipv4.sh` and `issuegen-public-ipv4.service` files using local file references. The final Butane config, stored in `services.bu`, will be:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 variant: fcos
-version: 1.5.0
+version: {butane-latest-stable-spec}
 systemd:
   units:
     - name: serial-getty@ttyS0.service

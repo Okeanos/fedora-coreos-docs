@@ -52,7 +52,7 @@ CONFIG_ENCODED=$(gzip -9c example.ign | base64 -w0 -)
 
 If your generated Ignition configuration is still too large, you will encounter an `Argument list too long` error or similar. The solution to that problem depends on whether you are working with vSphere or Workstation/Fusion.
 
-For vSphere the solution is simple because instead of inlining the configuration file within your shell, `govc` allows you to specify a path to a local file instead with the https://github.com/vmware/govmomi/blob/main/govc/USAGE.md#vmchange[`vm.change`]-command and will handle reading and writing it internally, circumventing any shell limitations.
+For vSphere, instead of inlining the configuration file within your shell, `govc` allows you to specify a path to a local file with the https://github.com/vmware/govmomi/blob/main/govc/USAGE.md#vmchange[`vm.change`]-command and will handle reading and writing it internally, circumventing any shell limitations.
 
 [source, bash]
 ----
@@ -110,39 +110,20 @@ ssh core@<ip address>
 
 This section shows how to use vSphere facilities to configure and run VMs from the command-line. Similar steps can be performed via the graphical UI too.
 
-=== Importing the OVA
+TIP: While the examples below use `govc session.login` to authenticate, you can also use environment variables to provide credentials. Check the https://github.com/vmware/govmomi/tree/main/govc#usage[official documentation] for details.
 
-The downloaded OVA has to be first imported into vSphere library:
+=== Setting up a new VM
+
+You can now deploy a new VM, starting from the OVA and the encoded Ignition configuration:
 
 [source, bash]
 ----
 FCOS_OVA='./ova-templates/fedora-coreos-31.20200210.3.0-vmware.x86_64.ova'
-LIBRARY='fcos-images'
-TEMPLATE_NAME='fcos-31.20200210.3.0'
-govc session.login -u 'user:password@host'
-govc library.create "${LIBRARY}"
-govc library.import -n "${TEMPLATE_NAME}" "${LIBRARY}" "${FCOS_OVA}"
-----
-
-=== Setting up a new VM
-
-You can now deploy a new VM, starting from the template in the library and the encoded Ignition configuration:
-
-[source, bash]
-----
 VM_NAME='fcos-node01'
-govc library.deploy "${LIBRARY}/${TEMPLATE_NAME}" "${VM_NAME}"
+govc session.login -u 'user:password@host'
+govc import.ova -name ${VM_NAME} ${FCOS_OVA}
 govc vm.change -vm "${VM_NAME}" -e "guestinfo.ignition.config.data.encoding=${CONFIG_ENCODING}"
 govc vm.change -vm "${VM_NAME}" -e "guestinfo.ignition.config.data=${CONFIG_ENCODED}"
-----
-
-Note: If the vcenter has multiple datacenters and datastores, you must specify them explicitly:
-[source, bash]
-----
-# Get resource pool using `$ govc find / -type ResourcePool`
-RESOURCE_POOL="/Datacenter6.5/host/Cluster6.5/Resources"
-DATASTORE="datastore-129"
-govc library.deploy -pool=${RESOURCE_POOL} -ds=${DATASTORE} "${LIBRARY}/${TEMPLATE_NAME}" "${VM_NAME}"
 ----
 
 A new `fcos-node01` VM is now available for booting. Its hardware configuration can be further customized at this point, and then powered-up:
@@ -158,6 +139,39 @@ If you set up an xref:authentication.adoc[SSH key] for the default `core` user, 
 [source, bash]
 ----
 ssh core@<ip address>
+----
+
+=== Using the OVA from the vSphere library
+
+In case you want to spawn multiple, different VMs based on the same base image you can import it into the vSphere library for easy reuse:
+
+[source, bash]
+----
+FCOS_OVA='./ova-templates/fedora-coreos-31.20200210.3.0-vmware.x86_64.ova'
+LIBRARY='fcos-images'
+TEMPLATE_NAME='fcos-31.20200210.3.0'
+govc session.login -u 'user:password@host'
+govc library.create "${LIBRARY}"
+govc library.import -n "${TEMPLATE_NAME}" "${LIBRARY}" "${FCOS_OVA}"
+----
+
+Creating a new instance can now be done using the `govc library.deploy` command:
+
+[source, bash]
+----
+VM_NAME='fcos-node01'
+govc library.deploy "${LIBRARY}/${TEMPLATE_NAME}" "${VM_NAME}"
+govc vm.change -vm "${VM_NAME}" -e "guestinfo.ignition.config.data.encoding=${CONFIG_ENCODING}"
+govc vm.change -vm "${VM_NAME}" -e "guestinfo.ignition.config.data=${CONFIG_ENCODED}"
+----
+
+Note: If the vCenter has multiple datacenters and datastores, you must specify them explicitly:
+[source, bash]
+----
+# Get resource pool using `$ govc find / -type ResourcePool`
+RESOURCE_POOL="/Datacenter6.5/host/Cluster6.5/Resources"
+DATASTORE="datastore-129"
+govc library.deploy -pool=${RESOURCE_POOL} -ds=${DATASTORE} "${LIBRARY}/${TEMPLATE_NAME}" "${VM_NAME}"
 ----
 
 === First-boot networking and Ignition
@@ -194,7 +208,7 @@ For further information on first-boot networking, see https://coreos.github.io/a
 
 You may encounter problems with your Ignition configuration that require access to the system log which appears during first-boot. To make a copy of the system log you can attach a serial device to the VM before booting. vSphere as well as Workstation and Fusion allow this and will save the output to a file of your choice.
 
-To attach a serial device simply modify the hardware settings of the powered off VM and add a `Serial Port`. Select the destination and name of the file to be created. Afterwards power on the VM. When encountering an error, check the file you initially specified - it should contain a copy of the system log.
+To attach a serial device, modify the hardware settings of the powered off VM and add a `Serial Port`. Select the destination and name of the file to be created. Afterwards power on the VM. When encountering an error, check the file you initially specified - it should contain a copy of the system log.
 
 The serial device can also be added to the VM via `govc` as described in the https://github.com/vmware/govmomi/blob/master/govc/USAGE.md#deviceserialconnect[official usage documentation]:
 
@@ -221,12 +235,13 @@ that may not be compatible with older, unsupported VMware products.
 However, you can modify the image's OVF metadata to specify an older
 virtual hardware version.
 
-The VMware OVA is simply a tarball that contains the files `disk.vmdk` and
+The VMware OVA is a tarball that contains the files `disk.vmdk` and
 `coreos.ovf`. In order to edit the metadata used by FCOS as a guest VM, you
 should untar the OVA artifact, edit the OVF file, then create a new OVA file.
 
-The example commands below change the OVF hardware version from the preconfigured
-value to hardware version `13`. (Note: the defaults in the OVF are subject to change.)
+The example commands below change the OVF hardware version from the preconfigured value to hardware version `13`.
+
+NOTE: The defaults in the OVF are subject to change.
 
 [source,bash,subs="attributes"]
 ----
